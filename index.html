@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>Retirement Withdrawal Calculator</title>
+
+  <link rel="manifest" href="manifest.json" />
+
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: #0b1220;
+      color: #e9eefc;
+    }
+    .wrap { max-width: 520px; margin: 0 auto; padding: 18px; }
+    .card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      backdrop-filter: blur(6px);
+    }
+    h1 { font-size: 20px; margin: 0 0 10px; }
+    p.sub { margin: 0 0 14px; opacity: 0.85; font-size: 13px; line-height: 1.35; }
+    label { display:block; font-size: 13px; opacity: 0.9; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.25);
+      color: #e9eefc;
+      outline: none;
+    }
+    input:focus { border-color: rgba(135,206,250,0.7); }
+    .row { display:flex; gap:10px; margin-top:10px; }
+    button {
+      flex:1;
+      padding:12px;
+      border:0;
+      border-radius:12px;
+      font-size:15px;
+      font-weight:650;
+      cursor:pointer;
+      background:#2a6df4;
+      color:white;
+    }
+    button.secondary { background: rgba(255,255,255,0.12); color:#e9eefc; }
+    .grid { display:grid; grid-template-columns: 1fr; gap:12px; margin-top:14px; }
+    .result {
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05);
+    }
+    .rate { font-size: 14px; opacity: 0.9; margin-bottom: 6px; }
+    .line { font-size: 14px; opacity: 0.9; margin-top: 4px; }
+    .value { font-size: 22px; font-weight: 750; letter-spacing: 0.2px; }
+    .pill {
+      display:inline-block;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.25);
+      margin-left:6px;
+      font-size:12px;
+      opacity:0.9;
+    }
+    .foot { margin-top: 12px; font-size: 12px; opacity: 0.75; }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Retirement Withdrawal Calculator <span class="pill">Annual + Monthly</span></h1>
+      <p class="sub">
+        Enter your total portfolio value. This calculates withdrawal amounts at 3%, 4%, and 8% per year,
+        plus the monthly equivalents (annual ÷ 12). Saves your last amount automatically.
+      </p>
+
+      <label for="portfolio">Total Portfolio Amount (USD)</label>
+      <input id="portfolio" inputmode="decimal" autocomplete="off" placeholder="e.g., 614000" />
+
+      <div class="row">
+        <button id="calcBtn">Calculate</button>
+        <button id="clearBtn" class="secondary">Clear</button>
+      </div>
+
+      <div class="grid" id="results" aria-live="polite" style="display:none;">
+        <div class="result">
+          <div class="rate">3% Withdrawal Rate</div>
+          <div class="line">Annual: <span class="value" id="r3a">$0</span></div>
+          <div class="line">Monthly: <span class="value" id="r3m">$0</span></div>
+        </div>
+
+        <div class="result">
+          <div class="rate">4% Withdrawal Rate</div>
+          <div class="line">Annual: <span class="value" id="r4a">$0</span></div>
+          <div class="line">Monthly: <span class="value" id="r4m">$0</span></div>
+        </div>
+
+        <div class="result">
+          <div class="rate">8% Withdrawal Rate</div>
+          <div class="line">Annual: <span class="value" id="r8a">$0</span></div>
+          <div class="line">Monthly: <span class="value" id="r8m">$0</span></div>
+        </div>
+      </div>
+
+      <div class="foot" id="status"></div>
+    </div>
+  </div>
+
+  <script>
+    function parseMoney(text) {
+      const cleaned = (text || "").replace(/[$,\s]/g, "");
+      if (!cleaned) return null;
+      const n = Number(cleaned);
+      if (!Number.isFinite(n) || n < 0) return null;
+      return n;
+    }
+
+    function money(n) {
+      return n.toLocaleString(undefined, {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 2
+      });
+    }
+
+    function setStatus(msg) {
+      document.getElementById("status").textContent = msg || "";
+    }
+
+    function calc() {
+      const value = parseMoney(document.getElementById("portfolio").value);
+      if (value === null) {
+        document.getElementById("results").style.display = "none";
+        setStatus("Enter a valid portfolio amount (example: 614000).");
+        return;
+      }
+
+      localStorage.setItem("portfolioAmount", String(value));
+
+      const rates = [
+        { r: 0.03, a: "r3a", m: "r3m" },
+        { r: 0.04, a: "r4a", m: "r4m" },
+        { r: 0.08, a: "r8a", m: "r8m" }
+      ];
+
+      for (const x of rates) {
+        const annual = value * x.r;
+        const monthly = annual / 12;
+        document.getElementById(x.a).textContent = money(annual);
+        document.getElementById(x.m).textContent = money(monthly);
+      }
+
+      document.getElementById("results").style.display = "grid";
+      setStatus("");
+    }
+
+    function clearAll() {
+      localStorage.removeItem("portfolioAmount");
+      document.getElementById("portfolio").value = "";
+      document.getElementById("results").style.display = "none";
+      setStatus("");
+    }
+
+    document.getElementById("calcBtn").addEventListener("click", calc);
+    document.getElementById("clearBtn").addEventListener("click", clearAll);
+    document.getElementById("portfolio").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") calc();
+    });
+
+    const saved = localStorage.getItem("portfolioAmount");
+    if (saved) {
+      document.getElementById("portfolio").value = saved;
+      calc();
+    }
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", async () => {
+        try { await navigator.serviceWorker.register("./sw.js"); } catch (_) {}
+      });
+    }
+  </script>
+</body>
+</html>
+
