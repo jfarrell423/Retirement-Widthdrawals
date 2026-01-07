@@ -1,6 +1,6 @@
-# Retirement-Widthdrawals
+# Retirement-Withdrawals
 
-Retirement-Widthdrawals
+Retirement-Withdrawals
 
 Portable Web Application to calculate montly widthdrawals from an retirement account.
 
